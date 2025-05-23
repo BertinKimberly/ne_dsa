@@ -1,3 +1,16 @@
+/*****************************************************************
+ * Rwanda Infrastructure Management System
+ * 
+ * This program manages infrastructure data for Rwandan cities,
+ * including road networks and budget allocations. It provides
+ * functionality for adding cities, roads, and their associated
+ * budgets, as well as displaying and storing this information.
+ * 
+ * Data is persisted in real-time to text files:
+ * - cities.txt: Contains information about all cities
+ * - roads.txt: Contains information about roads and their budgets
+ *****************************************************************/
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -9,30 +22,61 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-// Function to get absolute path of a file
+//====================================================================
+// UTILITY FUNCTIONS
+//====================================================================
+
+/**
+ * Gets the absolute path of a file relative to the current directory
+ * @param filename The name of the file
+ * @return The absolute path as a string
+ */
 string getAbsolutePath(const string& filename) {
     fs::path currentPath = fs::current_path();
     fs::path filePath = currentPath / filename;
     return filePath.string();
 }
 
+//====================================================================
+// DATA STRUCTURES
+//====================================================================
+
+/**
+ * Represents a city with an index and name
+ */
 struct City {
-    int index;
-    string name;
+    int index;      // Unique identifier for the city
+    string name;    // Name of the city
 };
 
+/**
+ * Represents a road connection between two cities with a budget
+ */
 struct Road {
-    int city1;
-    int city2;
-    double budget;
+    int city1;      // Index of the first city
+    int city2;      // Index of the second city
+    double budget;  // Budget allocation in billion RWF
 };
 
+//====================================================================
+// RWANDA INFRASTRUCTURE CLASS
+//====================================================================
+
+/**
+ * Main class for managing Rwanda's infrastructure data
+ * Handles cities, roads, and budget allocations
+ */
 class RwandaInfrastructure {
 private:
-    vector<City> cities;
-    vector<vector<int>> roadMatrix;
-    vector<vector<double>> budgetMatrix;
+    vector<City> cities;                  // List of all cities
+    vector<vector<int>> roadMatrix;       // Adjacency matrix for roads (0 or 1)
+    vector<vector<double>> budgetMatrix;  // Matrix for budget allocations
     
+    /**
+     * Finds the index of a city by its name
+     * @param name The name of the city to find
+     * @return The city's index or -1 if not found
+     */
     int findCityIndex(const string& name) {
         for (const auto& city : cities) {
             if (city.name == name) {
@@ -42,12 +86,20 @@ private:
         return -1;
     }
     
+    /**
+     * Initializes the road and budget matrices
+     * Called when the first city is added
+     */
     void initializeMatrices() {
         int size = cities.size();
         roadMatrix.resize(size, vector<int>(size, 0));
         budgetMatrix.resize(size, vector<double>(size, 0.0));
     }
     
+    /**
+     * Resizes the matrices when new cities are added
+     * Preserves existing connections and budgets
+     */
     void resizeMatrices() {
         int newSize = cities.size();
         // Resize road matrix
@@ -64,10 +116,18 @@ private:
     }
     
 public:
+    /**
+     * Constructor for the RwandaInfrastructure class
+     * Initializes with empty matrices
+     */
     RwandaInfrastructure() {
         // Initialize with empty matrices
     }
     
+    /**
+     * Adds a new city to the system
+     * @param name The name of the city to add
+     */
     void addCity(const string& name) {
         // Check if city already exists
         if (findCityIndex(name) != -1) {
@@ -90,6 +150,11 @@ public:
         // No saveToFiles() call here to prevent duplicate calls during loadInitialData
     }
     
+    /**
+     * Adds a road connection between two cities
+     * @param city1 The name of the first city
+     * @param city2 The name of the second city
+     */
     void addRoad(const string& city1, const string& city2) {
         int idx1 = findCityIndex(city1);
         int idx2 = findCityIndex(city2);
@@ -111,6 +176,12 @@ public:
         // No saveToFiles() call here to prevent duplicate calls during loadInitialData
     }
     
+    /**
+     * Adds a budget allocation for a road between two cities
+     * @param city1 The name of the first city
+     * @param city2 The name of the second city
+     * @param budget The budget amount in billion RWF
+     */
     void addBudget(const string& city1, const string& city2, double budget) {
         int idx1 = findCityIndex(city1);
         int idx2 = findCityIndex(city2);
@@ -138,6 +209,11 @@ public:
         // No saveToFiles() call here to prevent duplicate calls during loadInitialData
     }
     
+    /**
+     * Edits the name of an existing city
+     * @param oldName The current name of the city
+     * @param newName The new name for the city
+     */
     void editCity(const string& oldName, const string& newName) {
         int idx = findCityIndex(oldName);
         if (idx == -1) {
@@ -158,7 +234,12 @@ public:
             }
         }
     }
-      void searchCityByIndex(int idx) {
+    
+    /**
+     * Searches for a city by its index
+     * @param idx The index of the city to find
+     */
+    void searchCityByIndex(int idx) {
         for (const auto& city : cities) {
             if (city.index == idx) {
                 cout << "City found: " << city.index << ": " << city.name << endl;
@@ -168,6 +249,9 @@ public:
         cout << "City with index " << idx << " not found." << endl;
     }
     
+    /**
+     * Displays all cities and their indices
+     */
     void displayCities() {
         cout << "\nCities:\n";
         for (const auto& city : cities) {
@@ -175,6 +259,9 @@ public:
         }
     }
     
+    /**
+     * Displays the road network as an adjacency matrix
+     */
     void displayRoads() {
         if (cities.empty()) {
             cout << "No cities recorded yet." << endl;
@@ -197,6 +284,9 @@ public:
         }
     }
     
+    /**
+     * Displays the budget allocations as a matrix
+     */
     void displayBudgets() {
         if (cities.empty()) {
             cout << "No cities recorded yet." << endl;
@@ -220,12 +310,19 @@ public:
         }
     }
     
+    /**
+     * Displays all data (cities, roads, and budgets)
+     */
     void displayAllData() {
         displayCities();
         displayRoads();
         displayBudgets();
     }
     
+    /**
+     * Saves all data to text files (cities.txt and roads.txt)
+     * Creates well-formatted tables with proper column alignment
+     */
     void saveToFiles() {
         // Get absolute paths for files
         string cityFilePath = getAbsolutePath("cities.txt");
@@ -269,6 +366,10 @@ public:
         roadFile.close();
     }
     
+    /**
+     * Loads initial data for Rwanda's infrastructure
+     * Creates cities and roads with predefined budget allocations
+     */
     void loadInitialData() {
         // Add the 7 initial cities
         vector<string> initialCities = {
@@ -303,12 +404,22 @@ public:
     }
 };
 
+//====================================================================
+// MAIN FUNCTION
+//====================================================================
+
+/**
+ * Main function - Entry point of the program
+ * Initializes the infrastructure system and handles the user interface
+ */
 int main() {
+    // Create and initialize the Rwanda infrastructure system
     RwandaInfrastructure rwanda;
     rwanda.loadInitialData();
     
     int choice;
     do {
+        // Display the main menu
         cout << "\nMenu:\n";
         cout << "1. Add new city(ies)\n";
         cout << "2. Add roads between cities\n";
@@ -324,8 +435,10 @@ int main() {
         
         cin.ignore(); // Clear newline character
         
+        // Process user's choice
         switch (choice) {
             case 1: {
+                // Add new cities
                 int numCities;
                 cout << "Enter the number of cities to add: ";
                 cin >> numCities;
@@ -341,6 +454,7 @@ int main() {
                 break;
             }
             case 2: {
+                // Add a road between two cities
                 string city1, city2;
                 cout << "Enter the name of the first city: ";
                 getline(cin, city1);
@@ -351,6 +465,7 @@ int main() {
                 break;
             }
             case 3: {
+                // Add budget for a road
                 string city1, city2;
                 double budget;
                 cout << "Enter the name of the first city: ";
@@ -365,6 +480,7 @@ int main() {
                 break;
             }
             case 4: {
+                // Edit city name
                 string oldName, newName;
                 cout << "Enter the current city name: ";
                 getline(cin, oldName);
@@ -375,6 +491,7 @@ int main() {
                 break;
             }            
             case 5: {
+                // Search for a city by index
                 int idx;
                 cout << "Enter the city index to search: ";
                 cin >> idx;
@@ -383,15 +500,19 @@ int main() {
                 break;
             }
             case 6:
+                // Display all cities
                 rwanda.displayCities();
                 break;
             case 7:
+                // Display road network
                 rwanda.displayRoads();
                 break;
             case 8:
+                // Display all infrastructure data
                 rwanda.displayAllData();
                 break;
             case 9:
+                // Exit the program
                 cout << "Exiting program.\n";
                 break;
             default:
