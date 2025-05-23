@@ -6,4 +6,3 @@ Index   City_Name
 5       Nyagatare           
 6       Rubavu              
 7       Rusizi              
-8       Nyamagabe           

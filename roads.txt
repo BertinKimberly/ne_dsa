@@ -8,3 +8,4 @@ Nbr  Road                     Budget
 7.   Muhanga-Rusizi           117.5     
 8.   Musanze-Nyagatare        96.14     
 9.   Musanze-Rubavu           33.7      
+10.  Nyagatare-Rusizi         30        

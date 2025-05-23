@@ -17,7 +17,8 @@
 #include <string>
 #include <iomanip>
 #include <algorithm>
-#include <filesystem>  // For std::filesystem::path and absolute
+#include <filesystem>  
+#include <limits>
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -37,25 +38,81 @@ string getAbsolutePath(const string& filename) {
     return filePath.string();
 }
 
+/**
+ * Clears input buffer and handles invalid input
+ */
+void clearInputBuffer() {
+    cin.clear(); // Clear error flags
+    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Skip to next newline
+}
+
+/**
+ * Gets valid integer input from user
+ * @param prompt Message to display to user
+ * @return Valid integer input
+ */
+int getValidIntInput(const string& prompt) {
+    int input;
+    cout << prompt;
+    while (!(cin >> input)) {
+        cout << "Invalid input. Please enter a number: ";
+        clearInputBuffer();
+    }
+    clearInputBuffer();
+    return input;
+}
+
+/**
+ * Gets valid double input from user
+ * @param prompt Message to display to user
+ * @return Valid double input
+ */
+double getValidDoubleInput(const string& prompt) {
+    double input;
+    cout << prompt;
+    while (!(cin >> input) || input < 0) {
+        cout << "Invalid input. Please enter a positive number: ";
+        clearInputBuffer();
+    }
+    clearInputBuffer();
+    return input;
+}
+
+/**
+ * Gets non-empty string input from user
+ * @param prompt Message to display to user
+ * @return Non-empty string input
+ */
+string getValidStringInput(const string& prompt) {
+    string input;
+    cout << prompt;
+    getline(cin, input);
+    while (input.empty()) {
+        cout << "Input cannot be empty. Please try again: ";
+        getline(cin, input);
+    }
+    return input;
+}
+
 //====================================================================
-// DATA STRUCTURES
+// STRUCTURES
 //====================================================================
 
 /**
  * Represents a city with an index and name
  */
 struct City {
-    int index;      // Unique identifier for the city
-    string name;    // Name of the city
+    int index;      
+    string name;    
 };
 
 /**
  * Represents a road connection between two cities with a budget
  */
 struct Road {
-    int city1;      // Index of the first city
-    int city2;      // Index of the second city
-    double budget;  // Budget allocation in billion RWF
+    int city1;      
+    int city2;      
+    double budget;  
 };
 
 //====================================================================
@@ -68,15 +125,10 @@ struct Road {
  */
 class RwandaInfrastructure {
 private:
-    vector<City> cities;                  // List of all cities
-    vector<vector<int>> roadMatrix;       // Adjacency matrix for roads (0 or 1)
-    vector<vector<double>> budgetMatrix;  // Matrix for budget allocations
+    vector<City> cities;                  
+    vector<vector<int>> roadMatrix;       
+    vector<vector<double>> budgetMatrix; 
     
-    /**
-     * Finds the index of a city by its name
-     * @param name The name of the city to find
-     * @return The city's index or -1 if not found
-     */
     int findCityIndex(const string& name) {
         for (const auto& city : cities) {
             if (city.name == name) {
@@ -124,15 +176,11 @@ public:
         // Initialize with empty matrices
     }
     
-    /**
-     * Adds a new city to the system
-     * @param name The name of the city to add
-     */
-    void addCity(const string& name) {
+    bool addCity(const string& name) {
         // Check if city already exists
         if (findCityIndex(name) != -1) {
             cout << "City " << name << " already exists." << endl;
-            return;
+            return false;
         }
         
         int newIndex = cities.empty() ? 1 : cities.back().index + 1;
@@ -146,49 +194,52 @@ public:
         }
         
         cout << "City " << name << " added with index " << newIndex << endl;
-        
-        // No saveToFiles() call here to prevent duplicate calls during loadInitialData
+        return true;
     }
     
-    /**
-     * Adds a road connection between two cities
-     * @param city1 The name of the first city
-     * @param city2 The name of the second city
-     */
-    void addRoad(const string& city1, const string& city2) {
+    bool addRoad(const string& city1, const string& city2) {
+        if (city1 == city2) {
+            cout << "Cannot add a road between the same city." << endl;
+            return false;
+        }
+        
         int idx1 = findCityIndex(city1);
         int idx2 = findCityIndex(city2);
         
         if (idx1 == -1 || idx2 == -1) {
             cout << "One or both cities not found." << endl;
-            return;
+            return false;
         }
         
         // Adjust for 0-based index in matrix
         int i = idx1 - 1;
         int j = idx2 - 1;
         
+        if (roadMatrix[i][j] == 1) {
+            cout << "A road already exists between " << city1 << " and " << city2 << endl;
+            return false;
+        }
+        
         roadMatrix[i][j] = 1;
         roadMatrix[j][i] = 1;
         
         cout << "Road added between " << city1 << " and " << city2 << endl;
-        
-        // No saveToFiles() call here to prevent duplicate calls during loadInitialData
+        return true;
     }
     
-    /**
-     * Adds a budget allocation for a road between two cities
-     * @param city1 The name of the first city
-     * @param city2 The name of the second city
-     * @param budget The budget amount in billion RWF
-     */
-    void addBudget(const string& city1, const string& city2, double budget) {
+
+    bool addBudget(const string& city1, const string& city2, double budget) {
+        if (budget < 0) {
+            cout << "Budget cannot be negative." << endl;
+            return false;
+        }
+        
         int idx1 = findCityIndex(city1);
         int idx2 = findCityIndex(city2);
         
         if (idx1 == -1 || idx2 == -1) {
             cout << "One or both cities not found." << endl;
-            return;
+            return false;
         }
         
         // Adjust for 0-based index in matrix
@@ -197,7 +248,7 @@ public:
         
         if (roadMatrix[i][j] == 0) {
             cout << "No road exists between " << city1 << " and " << city2 << endl;
-            return;
+            return false;
         }
         
         budgetMatrix[i][j] = budget;
@@ -205,40 +256,39 @@ public:
         
         cout << "Budget of " << budget << " billion RWF added for road between " 
              << city1 << " and " << city2 << endl;
-             
-        // No saveToFiles() call here to prevent duplicate calls during loadInitialData
+        return true;
     }
     
-    /**
-     * Edits the name of an existing city
-     * @param oldName The current name of the city
-     * @param newName The new name for the city
-     */
-    void editCity(const string& oldName, const string& newName) {
+
+    bool editCity(const string& oldName, const string& newName) {
+        if (oldName == newName) {
+            cout << "New name is the same as the old name." << endl;
+            return false;
+        }
+        
         int idx = findCityIndex(oldName);
         if (idx == -1) {
             cout << "City " << oldName << " not found." << endl;
-            return;
+            return false;
         }
+        
         // Check if new name already exists
         if (findCityIndex(newName) != -1) {
             cout << "City " << newName << " already exists." << endl;
-            return;
+            return false;
         }
         
         for (auto& city : cities) {
             if (city.name == oldName) {
                 city.name = newName;
                 cout << "City renamed from " << oldName << " to " << newName << endl;
-                return;
+                return true;
             }
         }
+        
+        return false;
     }
     
-    /**
-     * Searches for a city by its index
-     * @param idx The index of the city to find
-     */
     void searchCityByIndex(int idx) {
         for (const auto& city : cities) {
             if (city.index == idx) {
@@ -249,10 +299,19 @@ public:
         cout << "City with index " << idx << " not found." << endl;
     }
     
+    bool hasCities() const {
+        return !cities.empty();
+    }
+    
     /**
      * Displays all cities and their indices
      */
     void displayCities() {
+        if (cities.empty()) {
+            cout << "No cities recorded yet." << endl;
+            return;
+        }
+        
         cout << "\nCities:\n";
         for (const auto& city : cities) {
             cout << city.index << ": " << city.name << endl;
@@ -269,7 +328,7 @@ public:
         }
         
         cout << "\nRoads Adjacency Matrix:\n";
-        cout << "     ";
+        cout << "    ";
         for (const auto& city : cities) {
             cout << setw(4) << city.index;
         }
@@ -295,7 +354,7 @@ public:
         
         cout << "\nBudgets Adjacency Matrix (in billion RWF):\n";
         cout << fixed << setprecision(1);
-        cout << "     ";
+        cout << "    ";
         for (const auto& city : cities) {
             cout << setw(8) << city.index;
         }
@@ -410,7 +469,7 @@ public:
 
 /**
  * Main function - Entry point of the program
- * Initializes the infrastructure system and handles the user interface
+ * Initializes the infrastructure system 
  */
 int main() {
     // Create and initialize the Rwanda infrastructure system
@@ -418,6 +477,8 @@ int main() {
     rwanda.loadInitialData();
     
     int choice;
+    bool validInput;
+    
     do {
         // Display the main menu
         cout << "\nMenu:\n";
@@ -430,72 +491,87 @@ int main() {
         cout << "7. Display roads\n";
         cout << "8. Display recorded data on the console\n";
         cout << "9. Exit\n";
-        cout << "Enter your choice: ";
-        cin >> choice;
         
-        cin.ignore(); // Clear newline character
+        choice = getValidIntInput("Enter your choice: ");
         
         // Process user's choice
         switch (choice) {
             case 1: {
                 // Add new cities
-                int numCities;
-                cout << "Enter the number of cities to add: ";
-                cin >> numCities;
-                cin.ignore();
-                
-                for (int i = 0; i < numCities; ++i) {
-                    string cityName;
-                    cout << "Enter the name for city " << (i + 1) << ": ";
-                    getline(cin, cityName);
-                    rwanda.addCity(cityName);
+                int numCities = getValidIntInput("Enter the number of cities to add: ");
+                if (numCities <= 0) {
+                    cout << "Number of cities must be positive." << endl;
+                    break;
                 }
-                rwanda.saveToFiles(); // Save after cities are added
+                
+                int addedCount = 0;
+                for (int i = 0; i < numCities; ++i) {
+                    string cityName = getValidStringInput("Enter the name for city " + to_string(i + 1) + ": ");
+                    if (rwanda.addCity(cityName)) {
+                        addedCount++;
+                    }
+                }
+                
+                if (addedCount > 0) {
+                    rwanda.saveToFiles(); // Save after cities are added
+                    cout << addedCount << " cities added successfully." << endl;
+                }
                 break;
             }
             case 2: {
                 // Add a road between two cities
-                string city1, city2;
-                cout << "Enter the name of the first city: ";
-                getline(cin, city1);
-                cout << "Enter the name of the second city: ";
-                getline(cin, city2);
-                rwanda.addRoad(city1, city2);
-                rwanda.saveToFiles(); // Save after road is added
+                if (!rwanda.hasCities()) {
+                    cout << "No cities exist yet. Add cities first." << endl;
+                    break;
+                }
+                
+                string city1 = getValidStringInput("Enter the name of the first city: ");
+                string city2 = getValidStringInput("Enter the name of the second city: ");
+                
+                if (rwanda.addRoad(city1, city2)) {
+                    rwanda.saveToFiles(); // Save after road is added
+                }
                 break;
             }
             case 3: {
                 // Add budget for a road
-                string city1, city2;
-                double budget;
-                cout << "Enter the name of the first city: ";
-                getline(cin, city1);
-                cout << "Enter the name of the second city: ";
-                getline(cin, city2);
-                cout << "Enter the budget for the road (in billion RWF): ";
-                cin >> budget;
-                cin.ignore();
-                rwanda.addBudget(city1, city2, budget);
-                rwanda.saveToFiles(); // Save after budget is added
+                if (!rwanda.hasCities()) {
+                    cout << "No cities exist yet. Add cities first." << endl;
+                    break;
+                }
+                
+                string city1 = getValidStringInput("Enter the name of the first city: ");
+                string city2 = getValidStringInput("Enter the name of the second city: ");
+                double budget = getValidDoubleInput("Enter the budget for the road (in billion RWF): ");
+                
+                if (rwanda.addBudget(city1, city2, budget)) {
+                    rwanda.saveToFiles(); // Save after budget is added
+                }
                 break;
             }
             case 4: {
                 // Edit city name
-                string oldName, newName;
-                cout << "Enter the current city name: ";
-                getline(cin, oldName);
-                cout << "Enter the new city name: ";
-                getline(cin, newName);
-                rwanda.editCity(oldName, newName);
-                rwanda.saveToFiles(); // Save after city is edited
+                if (!rwanda.hasCities()) {
+                    cout << "No cities exist yet. Add cities first." << endl;
+                    break;
+                }
+                
+                string oldName = getValidStringInput("Enter the current city name: ");
+                string newName = getValidStringInput("Enter the new city name: ");
+                
+                if (rwanda.editCity(oldName, newName)) {
+                    rwanda.saveToFiles(); // Save after city is edited
+                }
                 break;
             }            
             case 5: {
                 // Search for a city by index
-                int idx;
-                cout << "Enter the city index to search: ";
-                cin >> idx;
-                cin.ignore(); // Clear newline character
+                if (!rwanda.hasCities()) {
+                    cout << "No cities exist yet. Add cities first." << endl;
+                    break;
+                }
+                
+                int idx = getValidIntInput("Enter the city index to search: ");
                 rwanda.searchCityByIndex(idx);
                 break;
             }
@@ -516,7 +592,7 @@ int main() {
                 cout << "Exiting program.\n";
                 break;
             default:
-                cout << "Invalid choice. Please try again.\n";
+                cout << "Invalid choice. Please enter a number between 1 and 9.\n";
         }
     } while (choice != 9);
     
